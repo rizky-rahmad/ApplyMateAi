@@ -17,6 +17,7 @@ file and the PRD disagree, the PRD wins — update this file instead of drifting
 > - **Tailwind v4** + **shadcn/ui "base-nova" style**, built on **Base UI** (`@base-ui/react`), not Radix.
 > - **lucide-react v1** — import icons with the `Icon` suffix (e.g. `SparklesIcon`, `Loader2Icon`).
 > - **pdf-parse v2** — class API `new PDFParse({ data }).getText()`. No v1 `lib/pdf-parse.js` workaround, no `@types/pdf-parse`.
+> - **Vercel bundling (`next.config.ts`)** — `pdf-parse` -> `pdfjs-dist` loads `@napi-rs/canvas` and `pdf.worker.mjs` through dynamic requires that `@vercel/nft` can't trace, so both must be force-included for `/api/parse-resume` via `outputFileTracingIncludes` (alongside `serverExternalPackages`). Do **not** remove these: without them prod `/api/parse-resume` 500s at module load on `DOMMatrix is not defined`, then 422s on a missing fake worker. It still works locally either way, so this only shows up after deploy.
 > - **Tiptap v2** editor: `StarterKit` + `@tiptap/extension-underline` + `@tiptap/extension-link`.
 > - **next-themes** drives light/dark (default **light**); the sonner `Toaster` reads it.
 > - **Gemini** via `@google/genai`; model `GEMINI_MODEL` in `src/lib/constants.ts` — currently **`gemini-2.5-flash`** (PRD: `gemini-2.5-pro`). Analysis is one structured-output call; the cover letter and all edits **stream** as plain text. Every call retries transient 429/500/503 with backoff (`withRetry`). Validated with zod.
