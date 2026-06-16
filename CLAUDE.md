@@ -161,7 +161,7 @@ src/
     │   ├── index.ts               # extractResumeText(): validate size/type + dispatch
     │   ├── pdf.ts                 # pdf-parse v2 wrapper
     │   └── docx.ts                # mammoth wrapper
-    ├── scrape.ts                  # Cheerio + schema.org JobPosting JSON-LD + og:description
+    ├── scrape.ts                  # Cheerio + JobPosting JSON-LD + og:description; lenient-parser fallback
     ├── schemas.ts                 # zod: AnalysisCore, AnalysisResult, AnalyzeInput, RefineInput, TailorInput, ScrapeInput
     ├── constants.ts               # limits + GEMINI_MODEL (the model id lives here)
     ├── errors.ts                  # AppError + toErrorResponse()
@@ -372,6 +372,8 @@ Exact copy/details to reproduce:
 - **Reliability / error handling (do this everywhere):**
   - Invalid/oversized/unsupported upload → clear inline error, no crash.
   - Scrape failure (LinkedIn etc. is best-effort) → meaningful message, suggest paste instead.
+    Servers that send malformed HTTP headers (rejected by undici `fetch`) are retried with
+    Node's lenient HTTP parser (`insecureHTTPParser`) — see `lib/scrape.ts`.
   - AI 429/500/503/timeout/malformed JSON → graceful error, auto-retried with backoff (`withRetry`);
     a failed stream restores the previous letter. Never a blank screen.
 - **Security/privacy:** no auth, no DB, **no persistence**. Process files/text in-memory and
