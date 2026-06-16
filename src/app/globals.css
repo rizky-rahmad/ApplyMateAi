@@ -1,0 +1,154 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* ApplyMate AI — tokens sampled from ui.png (violet/indigo on lavender-white). */
+:root {
+  --radius: 0.75rem;
+  --background: #f7f7fd;
+  --foreground: #1e1b33;
+  --card: #ffffff;
+  --card-foreground: #1e1b33;
+  --popover: #ffffff;
+  --popover-foreground: #1e1b33;
+  --primary: #5b3fe0;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f0fa;
+  --secondary-foreground: #2a2550;
+  --muted: #f2f2f8;
+  --muted-foreground: #6b6b80;
+  --accent: #efebfe;
+  --accent-foreground: #4b2fd0;
+  --destructive: #dc2626;
+  --border: #e8e8f1;
+  --input: #e2e2ee;
+  --ring: #5b3fe0;
+  --chart-1: #5b3fe0;
+  --chart-2: #7c66f0;
+  --chart-3: #9d8bf5;
+  --chart-4: #10b981;
+  --chart-5: #f97316;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1e1b33;
+  --sidebar-primary: #5b3fe0;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #efebfe;
+  --sidebar-accent-foreground: #4b2fd0;
+  --sidebar-border: #e8e8f1;
+  --sidebar-ring: #5b3fe0;
+}
+
+.dark {
+  --background: #100e1b;
+  --foreground: #ececf5;
+  --card: #181530;
+  --card-foreground: #ececf5;
+  --popover: #181530;
+  --popover-foreground: #ececf5;
+  --primary: #7c66f0;
+  --primary-foreground: #0d0a1c;
+  --secondary: #221d3d;
+  --secondary-foreground: #ececf5;
+  --muted: #221d3d;
+  --muted-foreground: #a7a3c2;
+  --accent: #2a2350;
+  --accent-foreground: #d6ccff;
+  --destructive: #f87171;
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: #7c66f0;
+  --chart-1: #7c66f0;
+  --chart-2: #9d8bf5;
+  --chart-3: #b9aef8;
+  --chart-4: #34d399;
+  --chart-5: #fb923c;
+  --sidebar: #181530;
+  --sidebar-foreground: #ececf5;
+  --sidebar-primary: #7c66f0;
+  --sidebar-primary-foreground: #0d0a1c;
+  --sidebar-accent: #2a2350;
+  --sidebar-accent-foreground: #d6ccff;
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: #7c66f0;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans antialiased;
+  }
+}
+
+/* Tiptap editor (cover letter) baseline styling */
+@layer components {
+  .tiptap {
+    @apply min-h-[260px] text-sm leading-relaxed text-foreground outline-none;
+  }
+  .tiptap p {
+    @apply my-3;
+  }
+  .tiptap ul {
+    @apply my-3 list-disc pl-6;
+  }
+  .tiptap ol {
+    @apply my-3 list-decimal pl-6;
+  }
+  .tiptap a {
+    @apply text-primary underline underline-offset-2;
+  }
+  .tiptap p.is-editor-empty:first-child::before {
+    @apply pointer-events-none float-left h-0 text-muted-foreground;
+    content: attr(data-placeholder);
+  }
+}

@@ -1,0 +1,13 @@
+# Normalize line endings to LF in the repo (consistent on Linux/Vercel).
+* text=auto eol=lf
+
+# Treat binaries as binary (no line-ending conversion).
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.docx binary
+*.pdf binary
