@@ -1,146 +1,130 @@
 # ApplyMate AI
 
-Generate a personalized, job-specific cover letter from your resume and a target job
-posting — plus a match analysis — in under a minute. Built with Next.js 15 and Google
-Gemini, with a **streaming** cover-letter writer and in-editor **AI editing**.
+Turn your resume + a target job posting into a **job-match analysis** and a **tailored cover
+letter** in under a minute — grounded only in your real experience, never fabricated.
 
-Upload a resume (PDF/DOCX), paste a job description or a job URL, and ApplyMate AI returns:
+Live demo: _add your Vercel URL here_
 
-- **Match score** (0–100) with a semantic color ring and a "why not higher" breakdown
-- **Top priorities** the employer cares about
-- **Matching skills** — click one to emphasize it in your letter
-- **Missing / weak skills** — click one to address it honestly (never fabricated)
-- A **tailored cover letter** that streams in as it is written, then becomes editable
+---
 
-In the editor you can **Regenerate**, **Refine** (more concise / more formal / shorten to
-~250 words / fix grammar), edit by hand, copy, or download as TXT/DOCX. No accounts, no
-database — files and text are processed in memory per request and never stored on a server.
+## What it is, and how to run it
+
+A single-page web app: upload a resume (PDF/DOCX), paste a job description or a job URL, and
+ApplyMate AI streams back a match score, the recruiter's likely priorities, your matching and
+missing skills, and an editable cover letter you can refine, copy, or download.
+
+```bash
+npm install
+cp .env.example .env.local      # then set GEMINI_API_KEY (https://aistudio.google.com/apikey)
+npm run dev                      # http://localhost:3000
+```
+
+No resume handy? Click **"Try with a sample"** to load an example and auto-generate.
+
+## Who it's for, and the one job it has to do well
+
+For job seekers who apply to many roles — software developers, designers, PMs, marketers,
+fresh grads, career switchers. **The one job:** produce a specific, honest, ready-to-send cover
+letter grounded in *your* resume and *this* job — fast — so you actually tailor each application
+instead of sending the same generic letter.
+
+## Why this problem, and how I know it's worth solving
+
+Most applicants reuse one generic letter (or paste raw ChatGPT output) across every role: weak
+personalization, poor alignment, fewer callbacks. Doing it properly by hand takes 15–30 minutes
+per application, so people skip it. The pain is real and *repeated on every single application*.
+My confidence here is from common, well-documented job-seeker behaviour and from being a target
+user myself — not formal research. Validating that with real users is the first thing I'd do next
+(see the questions below).
+
+## What's already out there, and why I built this anyway
+
+- **Generic LLM chat (ChatGPT/Gemini):** flexible, but you re-prompt every time, it happily
+  invents experience, and there's no structure or match analysis.
+- **Paid tools (Teal, Rezi, Kickresume, etc.):** capable, but gated behind sign-up/paywalls and
+  often still generic.
+
+ApplyMate is a **focused, no-login, single-action** tool that (1) is strictly **grounded in your
+resume** — it won't claim skills you don't have, and honestly *addresses* gaps instead of faking
+them — and (2) pairs the letter with a **transparent match analysis** so you understand the fit.
+
+## What's in scope, what's left out, and why
+
+**In:** resume upload (PDF/DOCX), paste JD or fetch a job URL, match analysis (score / priorities
+/ matching+missing skills / concerns), streamed cover letter, in-editor **AI Refine** (concise /
+formal / shorten / fix grammar) and **click-a-skill Tailor**, copy + TXT/DOCX download.
+
+**Out (deliberately, for a ~1-day scope):** accounts, a database / saved history, a resume
+builder, application tracking, ATS optimization, payments, multi-language. Nothing is persisted
+server-side — the working session lives only in the browser. Kept small so the core loop works
+well rather than spreading thin.
+
+## Where I didn't have answers, what I assumed
+
+- Users already have a resume and a specific job in mind.
+- The job posting contains enough detail to analyze.
+- Gemini can extract meaningful signal from plain resume text.
+- "No login + nothing stored" is acceptable — privacy over the convenience of saved history.
+- Resumes are small (a few hundred KB), so the upload size limit rarely bites.
+
+## Three questions I'd ask a real user before building more
+
+1. After generating, did you send it mostly as-is or rewrite it — and which parts felt wrong?
+2. Do you trust the match score enough to *act* on it (e.g. decide whether to apply)? What would
+   make you trust it more?
+3. Would you want past resumes/letters saved across sessions, or is "nothing stored" a feature
+   for you?
+
+## How I'd know it's working, and what I'd do next
+
+**Working =** a high generate → copy/download rate, a low *immediate* regenerate rate (the first
+draft is good enough), and users editing only a small fraction of the letter. **Next:** more
+reliable URL import (headless fetch for JS-only sites), pick tone/length up front, generate a few
+variants to compare, and optional opt-in history.
+
+---
+
+## How I used AI
+
+This was built almost entirely with an AI coding agent (Claude Code). It did the scaffolding, the
+two-stage streaming pipeline, the Gemini integration and prompts, the full UI, and most debugging
+— I directed the product decisions, reviewed every change, and verified features by driving the
+running app.
+
+**One place it got something wrong that I caught:** it first wrote `pdf-parse` code for the **v1**
+API (the old `pdf-parse/lib/pdf-parse.js` debug-file workaround), but the installed package was
+**v2**, which has a completely different class-based API (`new PDFParse({ data }).getText()`). I
+caught it by checking the actually-installed version and its type definitions before trusting the
+assumption, then rewrote the wrapper. (Similar catch: `create-next-app@latest` pulled Next 16 —
+pinned back to Next 15 per the brief.)
 
 ---
 
 ## Tech stack
 
-| Layer        | Choice                                                        |
-|--------------|--------------------------------------------------------------|
-| Framework    | Next.js 15 (App Router) + React 19, TypeScript               |
-| Styling      | Tailwind CSS v4 + shadcn/ui (Base UI)                         |
-| AI           | Google Gemini via `@google/genai` (default `gemini-2.5-flash`); analysis is structured JSON, the letter + edits stream |
-| Parsing      | `pdf-parse` (PDF), `mammoth` (DOCX)                           |
-| Scraping     | `cheerio` (+ schema.org JobPosting JSON-LD / og:description) |
-| Editor       | Tiptap (rich-text cover-letter editor)                       |
-| Validation   | `zod`                                                        |
-| Deployment   | Vercel                                                       |
+Next.js 15 (App Router) + React 19 · TypeScript · Tailwind v4 + shadcn/ui · Google Gemini
+(`@google/genai`, default `gemini-2.5-flash`) · pdf-parse + mammoth (parsing) · cheerio
+(scraping) · Tiptap (editor) · zod (validation). See [`CLAUDE.md`](CLAUDE.md) for architecture.
 
----
+| Command            | Description                |
+|--------------------|----------------------------|
+| `npm run dev`      | Dev server                 |
+| `npm run build`    | Production build           |
+| `npm run start`    | Serve the production build |
+| `npm run lint`     | ESLint                     |
+| `npx tsc --noEmit` | Type-check                 |
 
-## Getting started
+## Deploy (Vercel)
 
-### 1. Prerequisites
-
-- Node.js 18.18+ (tested on Node 22)
-- A Google Gemini API key — create one at <https://aistudio.google.com/apikey>
-
-### 2. Install
-
-```bash
-npm install
-```
-
-### 3. Configure environment
-
-```bash
-cp .env.example .env.local
-```
-
-```ini
-# .env.local
-GEMINI_API_KEY=your_key_here
-```
-
-`.env.local` is git-ignored. The UI renders without a key, but generation needs it.
-
-### 4. Run
-
-```bash
-npm run dev
-```
-
-Open <http://localhost:3000>. (If port 3000 is busy, Next picks the next free port.) No
-resume handy? Click **"Try with a sample"** to load an example and auto-generate.
-
----
-
-## Scripts
-
-| Command            | Description                                  |
-|--------------------|----------------------------------------------|
-| `npm run dev`      | Start the dev server                         |
-| `npm run build`    | Production build                             |
-| `npm run start`    | Serve the production build                   |
-| `npm run lint`     | Run ESLint                                   |
-| `npx tsc --noEmit` | Type-check                                   |
-
-## Choosing the model
-
-The Gemini model id lives in one place — `GEMINI_MODEL` in
-[`src/lib/constants.ts`](src/lib/constants.ts). It defaults to `gemini-2.5-flash` (fast and
-economical); switch it to `gemini-2.5-pro` for deeper analysis.
-
----
-
-## How it works
-
-```
-Resume (PDF/DOCX) ──► /api/parse-resume ──► resume text
-Job description ────────────────────────► job text
-   or Job URL ──────► /api/scrape-job ────► job text (JSON-LD / og:description / DOM)
-
-Generate ──► /api/analyze       ──► match analysis  (cards render immediately)
-         └─► /api/cover-letter  ──► cover letter STREAMS in, then becomes editable
-
-In the editor:  Regenerate · Refine (/api/refine) · click a skill → Tailor (/api/tailor)
-```
-
-All parsing, scraping, and AI calls run server-side in Node-runtime route handlers, so the
-Gemini key is never exposed to the browser. The analysis is a single structured-JSON call
-(validated with `zod`); the cover letter and every edit stream back as plain text. Transient
-Gemini errors (high-demand 429/500/503) are retried automatically with backoff.
-
-## Project structure
-
-```
-src/
-├── app/
-│   ├── page.tsx              # Single-page UI (sidebar inputs + streamed results)
-│   ├── layout.tsx            # Fonts, theme provider, toaster
-│   ├── globals.css           # Design tokens + Tailwind
-│   └── api/                  # parse-resume · scrape-job · analyze · cover-letter · refine · tailor
-├── components/               # header/footer, input, analysis cards, cover-letter editor
-└── lib/                      # ai (Gemini + prompts), parse, scrape, schemas, export, utils
-```
-
-See [`CLAUDE.md`](CLAUDE.md) for the full architecture and contributor guidelines, and
-[`requierements.md`](requierements.md) for the original product requirements.
-
----
-
-## Deployment
-
-Deploy to Vercel:
-
-1. Push the repo to GitHub and import it in Vercel.
-2. Add `GEMINI_API_KEY` in the Vercel project's environment variables.
+1. Push to GitHub and **Import** the repo in Vercel (auto-detects Next.js).
+2. Add `GEMINI_API_KEY` in the project's Environment Variables.
 3. Deploy.
 
-> Note: serverless request bodies are capped (~4.5 MB on Vercel), below the app's 10 MB
-> upload limit. For very large resumes, host on a platform without that cap or add chunked
-> upload handling.
-
----
+> Vercel serverless caps request bodies at ~4.5 MB (below the app's 10 MB upload limit); fine
+> for typical resumes.
 
 ## Privacy
 
-No authentication, no database, no server-side persistence. Resumes and job text are sent to
-Google Gemini using your API key and processed in memory to fulfill a single request. Your
-current working session (inputs + result) is kept only in the browser's `sessionStorage` —
-ephemeral, and cleared when the tab closes.
+No auth, no database, no server-side persistence. Resumes and job text are sent to Google Gemini
+using your API key and processed in memory for one request. The working session is kept only in
+the browser's `sessionStorage` (cleared when the tab closes).
