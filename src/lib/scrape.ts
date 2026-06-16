@@ -1,9 +1,13 @@
 import "server-only";
+import { request as httpRequest } from "node:http";
+import { request as httpsRequest } from "node:https";
 import * as cheerio from "cheerio";
 import { AppError } from "@/lib/errors";
 import { JD_MIN_CHARS } from "@/lib/constants";
 
 const FETCH_TIMEOUT_MS = 12_000;
+const BROWSER_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36";
 
 // Source-specific containers (best effort), tried before the generic fallback.
 const SOURCE_SELECTORS: Record<string, string> = {
@@ -49,7 +53,6 @@ function extractJsonLdJob($: cheerio.CheerioAPI): string {
         const type = node?.["@type"];
         const isJob = type === "JobPosting" || (Array.isArray(type) && type.includes("JobPosting"));
         if (isJob && typeof node.description === "string") {
-          // description is usually HTML -> strip tags to text.
           found = cheerio.load(node.description).root().text();
           return;
         }
@@ -61,23 +64,72 @@ function extractJsonLdJob($: cheerio.CheerioAPI): string {
   return collapse(found);
 }
 
-/** Fetch a job posting URL and extract its text content (FR-03). */
-export async function scrapeJobPosting(url: string): Promise<{ text: string; source: string }> {
+/**
+ * Fallback fetch using Node's lenient HTTP parser. Some servers (e.g. legacy/gov sites)
+ * send slightly non-compliant headers that browsers tolerate but undici's `fetch` rejects
+ * (HPE_INVALID_HEADER_TOKEN). Follows redirects and asks for an uncompressed response.
+ */
+function lenientFetchHtml(url: string, maxRedirects = 4): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let target: URL;
+    try {
+      target = new URL(url);
+    } catch {
+      reject(new AppError("Please enter a valid URL.", 400));
+      return;
+    }
+    const requestFn = target.protocol === "http:" ? httpRequest : httpsRequest;
+    const req = requestFn(
+      url,
+      {
+        insecureHTTPParser: true,
+        headers: {
+          "User-Agent": BROWSER_UA,
+          Accept: "text/html,application/xhtml+xml",
+          "Accept-Encoding": "identity",
+        },
+      },
+      (res) => {
+        const status = res.statusCode ?? 0;
+        const location = res.headers.location;
+        if (status >= 300 && status < 400 && location && maxRedirects > 0) {
+          res.resume();
+          lenientFetchHtml(new URL(location, url).toString(), maxRedirects - 1).then(resolve, reject);
+          return;
+        }
+        if (status < 200 || status >= 300) {
+          res.resume();
+          reject(
+            new AppError(
+              `Couldn't fetch that page (HTTP ${status}). Try pasting the description instead.`,
+              422,
+            ),
+          );
+          return;
+        }
+        res.setEncoding("utf8");
+        let data = "";
+        res.on("data", (chunk) => {
+          data += chunk;
+        });
+        res.on("end", () => resolve(data));
+      },
+    );
+    req.setTimeout(FETCH_TIMEOUT_MS, () => req.destroy(new Error("timeout")));
+    req.on("error", reject);
+    req.end();
+  });
+}
+
+/** Fetch page HTML: try `fetch` first, fall back to the lenient parser on a network/parse error. */
+async function fetchPageHtml(url: string): Promise<string> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
-  let html: string;
-  let hostname: string;
   try {
-    hostname = new URL(url).hostname.replace(/^www\./, "");
     const res = await fetch(url, {
       signal: controller.signal,
       redirect: "follow",
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
-        Accept: "text/html,application/xhtml+xml",
-      },
+      headers: { "User-Agent": BROWSER_UA, Accept: "text/html,application/xhtml+xml" },
     });
     if (!res.ok) {
       throw new AppError(
@@ -85,15 +137,30 @@ export async function scrapeJobPosting(url: string): Promise<{ text: string; sou
         422,
       );
     }
-    html = await res.text();
+    return await res.text();
+  } catch (err) {
+    if (err instanceof AppError) throw err;
+    if (err instanceof Error && err.name === "AbortError") throw err; // caller maps to 504
+    // Non-compliant headers / connection quirk -> retry with the lenient parser.
+    return await lenientFetchHtml(url);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+/** Fetch a job posting URL and extract its text content (FR-03). */
+export async function scrapeJobPosting(url: string): Promise<{ text: string; source: string }> {
+  let html: string;
+  let hostname: string;
+  try {
+    hostname = new URL(url).hostname.replace(/^www\./, "");
+    html = await fetchPageHtml(url);
   } catch (err) {
     if (err instanceof AppError) throw err;
     if (err instanceof Error && err.name === "AbortError") {
       throw new AppError("That page took too long to load. Try pasting the description instead.", 504);
     }
     throw new AppError("We couldn't reach that URL. Try pasting the description instead.", 422);
-  } finally {
-    clearTimeout(timeout);
   }
 
   const $ = cheerio.load(html);
