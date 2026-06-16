@@ -35,12 +35,34 @@ function getClient(): GoogleGenAI {
   return client;
 }
 
-/** Gemini occasionally returns transient 429/500/503 ("high demand"). */
-function isTransient(err: unknown): boolean {
+/** Pull a Gemini error's HTTP-ish status code and message into a simple shape. */
+function geminiError(err: unknown): { code: number | undefined; message: string } {
   const e = err as { status?: number; code?: number; message?: string };
   const code = typeof e?.status === "number" ? e.status : e?.code;
+  return { code, message: String(e?.message ?? "") };
+}
+
+/**
+ * A hard quota cap -- e.g. the free tier's daily request limit -- as opposed to the
+ * transient per-minute spike the PRD wants retried. Retrying within the request won't
+ * clear a daily cap, so we fail fast with an actionable message instead.
+ */
+function isQuotaExceeded(err: unknown): boolean {
+  const { code, message } = geminiError(err);
+  if (code !== 429) return false;
+  return /exceeded your current quota|per ?day|free_tier|RequestsPerDay/i.test(message);
+}
+
+const QUOTA_MESSAGE =
+  "Gemini API quota exceeded: you've hit the free tier's request limit for this model. " +
+  "Wait for the daily quota to reset, enable billing on your Google AI Studio project, " +
+  "or switch GEMINI_MODEL to a model with remaining quota.";
+
+/** Gemini occasionally returns transient 429/500/503 ("high demand"). */
+function isTransient(err: unknown): boolean {
+  const { code, message } = geminiError(err);
   if (code === 429 || code === 500 || code === 503) return true;
-  return /unavailable|high demand|overloaded|temporar|rate limit/i.test(String(e?.message ?? ""));
+  return /unavailable|high demand|overloaded|temporar|rate limit/i.test(message);
 }
 
 /** Run an async call, retrying transient Gemini errors with a short backoff. */
@@ -51,6 +73,8 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
       return await fn();
     } catch (err) {
       lastError = err;
+      // A hard quota cap won't clear by retrying -- surface a clear, actionable error now.
+      if (isQuotaExceeded(err)) throw new AppError(QUOTA_MESSAGE, 429);
       if (!isTransient(err) || i === attempts - 1) throw err;
       await new Promise((resolve) => setTimeout(resolve, 700 * (i + 1)));
     }

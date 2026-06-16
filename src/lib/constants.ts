@@ -19,4 +19,4 @@ export const JD_MAX_CHARS = 6000; // matches the "0 / 6000" counter in ui.png
 
 export const COVER_LETTER_MAX_WORDS = 400; // FR-07
 
-export const GEMINI_MODEL = "gemini-2.5-flash"; // PRD: AI stack
+export const GEMINI_MODEL = "gemini-3.1-flash-lite"; // PRD: AI stack

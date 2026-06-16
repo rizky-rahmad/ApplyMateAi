@@ -198,7 +198,12 @@ export default function Home() {
       form.append("file", file);
       const res = await fetch("/api/parse-resume", { method: "POST", body: form });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error((data as { error?: string }).error || "Could not read that file.");
+      if (!res.ok) {
+        // Prefer the server's specific message; fall back with the HTTP status so a
+        // non-JSON error (e.g. a 413 too-large or a 500 crash) isn't a dead end.
+        const serverError = (data as { error?: string }).error;
+        throw new Error(serverError || `Could not read that file (HTTP ${res.status}).`);
+      }
       setResume({ text: data.text, filename: data.filename, sizeBytes: data.sizeBytes });
       toast.success("Resume uploaded");
     } catch (err) {
